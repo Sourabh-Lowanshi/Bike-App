@@ -1,0 +1,172 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Surfaces */
+  --bg: #050507;
+  --bg-elevated: #0a0a0e;
+  --surface: #0d0d13;
+  --surface-glass: rgba(255, 255, 255, 0.045);
+  --surface-glass-hover: rgba(255, 255, 255, 0.075);
+  --border-glass: rgba(255, 255, 255, 0.09);
+  --border-glass-strong: rgba(255, 255, 255, 0.16);
+
+  /* Text */
+  --text-primary: #f4f4f7;
+  --text-secondary: #a8a8b3;
+  --text-muted: #6b6b76;
+
+  /* Pearl gradient accent -- iridescent blue > violet > teal, evokes a
+     black-pearl sheen and a bike instrument-cluster glow */
+  --pearl-1: #7c9cff;
+  --pearl-2: #b98cff;
+  --pearl-3: #7ce3d8;
+  --pearl-gradient: linear-gradient(
+    135deg,
+    var(--pearl-1) 0%,
+    var(--pearl-2) 55%,
+    var(--pearl-3) 100%
+  );
+
+  /* Semantic */
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #fb7185;
+
+  --radius: 1.1rem;
+  --radius-sm: 0.65rem;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-surface: var(--surface);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-pearl-1: var(--pearl-1);
+  --color-pearl-2: var(--pearl-2);
+  --color-pearl-3: var(--pearl-3);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-display: var(--font-space-grotesk, "Space Grotesk"), ui-sans-serif, sans-serif;
+  --font-sans: var(--font-inter, "Inter"), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-plex-mono, "IBM Plex Mono"), ui-monospace, monospace;
+  --radius-lg: var(--radius);
+  --radius-md: var(--radius-sm);
+}
+
+html {
+  background: var(--bg);
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ambient background: faint pearl glow orbs, fixed behind all content */
+.bp-ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: var(--bg);
+}
+.bp-ambient-bg::before,
+.bp-ambient-bg::after {
+  content: "";
+  position: absolute;
+  width: 60vw;
+  height: 60vw;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.12;
+}
+.bp-ambient-bg::before {
+  top: -20vw;
+  right: -15vw;
+  background: radial-gradient(circle, var(--pearl-1), transparent 70%);
+}
+.bp-ambient-bg::after {
+  bottom: -25vw;
+  left: -10vw;
+  background: radial-gradient(circle, var(--pearl-2), transparent 70%);
+}
+
+.glass {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-glass);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+.glass-hover {
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.glass-hover:hover {
+  background: var(--surface-glass-hover);
+  border-color: var(--border-glass-strong);
+}
+
+.pearl-text {
+  background: var(--pearl-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.pearl-border {
+  position: relative;
+}
+.pearl-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--pearl-gradient);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--pearl-2);
+  color: #0a0a0e;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-glass-strong);
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
