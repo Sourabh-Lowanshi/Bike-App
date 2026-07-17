@@ -1,49 +1,10 @@
-import { NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import NextAuth from "next-auth";
+import { authConfig } from "@/auth.config";
 
-// Edge-safe route protection. This intentionally does NOT import `auth.ts`
-// (which pulls in Mongoose/Node APIs) — the Edge middleware runtime can't
-// run those. `getToken` just decodes the JWT session cookie (role is
-// embedded in the token by the jwt() callback in auth.ts).
-const PROTECTED_PREFIXES = [
-  "/dashboard",
-  "/fuel",
-  "/trips",
-  "/maintenance",
-  "/expenses",
-  "/garage",
-  "/compliance",
-  "/settings",
-  "/analytics",
-  "/reports",
-  "/admin",
-];
-const ADMIN_PREFIXES = ["/admin"];
-
-export async function middleware(request: Request) {
-  const url = new URL(request.url);
-  const isProtected = PROTECTED_PREFIXES.some((p) => url.pathname.startsWith(p));
-
-  if (!isProtected) return NextResponse.next();
-
-  const token = await getToken({
-    req: request as unknown as import("next/server").NextRequest,
-    secret: process.env.AUTH_SECRET,
-  });
-
-  if (!token) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", url.pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  const isAdminRoute = ADMIN_PREFIXES.some((p) => url.pathname.startsWith(p));
-  if (isAdminRoute && token.role !== "admin") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  return NextResponse.next();
-}
+// Uses the SAME login-checking machinery (session/authorized callbacks) as
+// the rest of the app via auth.config.ts — this used to be a hand-rolled
+// getToken() check that could disagree with the real session on some hosts.
+export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
   matcher: [

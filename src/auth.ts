@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import { Bike } from "@/models/Bike";
 import type { Types } from "mongoose";
+import { authConfig } from "@/auth.config";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")
@@ -28,6 +29,7 @@ async function ensureDefaultBike(userId: Types.ObjectId | string) {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -55,11 +57,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  session: { strategy: "jwt" },
-  pages: {
-    signIn: "/login",
-  },
   callbacks: {
+    ...authConfig.callbacks,
     async signIn({ user }) {
       // Ensure a User document (and a default BlackPearl bike) exists on first login.
       await connectDB();
