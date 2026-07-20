@@ -5,6 +5,9 @@ export interface IUser extends Document {
   email: string;
   image?: string;
   role: "user" | "admin";
+  passwordHash?: string; // only set for email/password accounts, not Google/Guest
+  resetTokenHash?: string;
+  resetTokenExpiry?: Date;
   createdAt: Date;
 }
 
@@ -13,6 +16,9 @@ const UserSchema = new Schema<IUser>({
   email: { type: String, required: true, unique: true, index: true },
   image: { type: String },
   role: { type: String, enum: ["user", "admin"], default: "user" },
+  passwordHash: { type: String, select: false },
+  resetTokenHash: { type: String, select: false },
+  resetTokenExpiry: { type: Date, select: false },
   createdAt: { type: Date, default: Date.now },
 });
 

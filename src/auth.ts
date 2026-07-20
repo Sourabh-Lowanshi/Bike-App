@@ -6,6 +6,7 @@ import { User } from "@/models/User";
 import { Bike } from "@/models/Bike";
 import type { Types } from "mongoose";
 import { authConfig } from "@/auth.config";
+import { verifyPassword } from "@/lib/password";
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")
@@ -47,6 +48,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!user) {
           user = await User.create({ name: "Guest Rider", email: guestEmail });
         }
+        await ensureDefaultBike(user._id);
+        return {
+          id: user._id.toString(),
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        };
+      },
+    }),
+    // Email + password login.
+    Credentials({
+      id: "credentials",
+      name: "Email",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(raw) {
+        const email = typeof raw?.email === "string" ? raw.email.toLowerCase().trim() : "";
+        const password = typeof raw?.password === "string" ? raw.password : "";
+        if (!email || !password) return null;
+
+        await connectDB();
+        const user = await User.findOne({ email }).select("+passwordHash");
+        if (!user?.passwordHash) return null; // no password set (e.g. Google-only account)
+
+        const valid = await verifyPassword(password, user.passwordHash);
+        if (!valid) return null;
+
         await ensureDefaultBike(user._id);
         return {
           id: user._id.toString(),

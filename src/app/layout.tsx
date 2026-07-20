@@ -8,7 +8,16 @@ export const metadata: Metadata = {
     "BlackPearl tracks fuel, mileage, trips, and maintenance for your TVS Apache RTR 160 4V.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icon.svg",
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "BlackPearl",
   },
 };
 

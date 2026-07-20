@@ -18,7 +18,11 @@ const ADMIN_PREFIXES = ["/admin"];
 
 export const authConfig: NextAuthConfig = {
   pages: { signIn: "/login" },
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days — explicit so nobody has to guess why sessions last this long
+    updateAge: 24 * 60 * 60, // refresh the cookie's expiry once a day of activity
+  },
   // No providers here — Google/Credentials (and their DB calls) only live in
   // the full config in auth.ts. This file must stay Edge-runtime-safe.
   providers: [],

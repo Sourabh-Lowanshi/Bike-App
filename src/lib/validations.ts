@@ -68,3 +68,27 @@ export const dailyExpenseSchema = z.object({
   notes: z.string().max(300).optional().or(z.literal("")),
 });
 export type DailyExpenseInput = z.infer<typeof dailyExpenseSchema>;
+
+export const registerSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
+  email: z.string().email("Enter a valid email"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+export type RegisterInput = z.infer<typeof registerSchema>;
+
+export const loginSchema = z.object({
+  email: z.string().email("Enter a valid email"),
+  password: z.string().min(1, "Password is required"),
+});
+export type LoginInput = z.infer<typeof loginSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Enter a valid email"),
+});
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

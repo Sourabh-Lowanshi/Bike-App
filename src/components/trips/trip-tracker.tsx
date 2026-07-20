@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Play, Square, Loader2, Route as RouteIcon } from "lucide-react";
+import { Play, Square, Loader2, Route as RouteIcon, Sun, SunMedium } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardValue } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils";
@@ -49,11 +49,15 @@ export function TripTracker() {
   const [tracking, setTracking] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
+  const [wakeLockActive, setWakeLockActive] = useState(false);
   const watchId = useRef<number | null>(null);
   const startTime = useRef<number>(0);
   const lastPos = useRef<GeolocationCoordinates | null>(null);
+  const startCoords = useRef<{ lat: number; lng: number } | null>(null);
   const path = useRef<{ lat: number; lng: number }[]>([]);
   const activeTripId = useRef<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wakeLockRef = useRef<any>(null);
 
   const activeTrip = data?.trips.find((t) => t.status === "active");
   const recentTrips = data?.trips.filter((t) => t.status === "completed").slice(0, 10) ?? [];
@@ -66,6 +70,38 @@ export function TripTracker() {
     if (!tracking) return;
     const interval = setInterval(() => setElapsed(Math.floor((Date.now() - startTime.current) / 1000)), 1000);
     return () => clearInterval(interval);
+  }, [tracking]);
+
+  // The Wake Lock API keeps the screen ON (preventing the auto-sleep timeout
+  // that suspends GPS callbacks) — but it does NOT stop someone manually
+  // pressing the power button, and browsers always release the lock when the
+  // tab/app is backgrounded. We re-acquire it whenever the page becomes
+  // visible again mid-ride, since that's the one case we *can* recover from
+  // automatically.
+  const requestWakeLock = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const nav = navigator as any;
+    if (!nav.wakeLock) {
+      setWakeLockActive(false);
+      return;
+    }
+    try {
+      wakeLockRef.current = await nav.wakeLock.request("screen");
+      setWakeLockActive(true);
+      wakeLockRef.current.addEventListener("release", () => setWakeLockActive(false));
+    } catch {
+      setWakeLockActive(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!tracking) return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") requestWakeLock();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tracking]);
 
   const startMutation = useMutation({
@@ -118,11 +154,16 @@ export function TripTracker() {
       (pos) => {
         path.current = [{ lat: pos.coords.latitude, lng: pos.coords.longitude }];
         lastPos.current = pos.coords;
+        startCoords.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         startTime.current = Date.now();
         setDistance(0);
         setElapsed(0);
         setTracking(true);
         startMutation.mutate({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        requestWakeLock();
+        if (!("wakeLock" in navigator)) {
+          toast.info("Your browser can't keep the screen on — leave BlackPearl open and unlocked for accurate tracking.");
+        }
 
         watchId.current = navigator.geolocation.watchPosition(
           (p) => {
@@ -149,12 +190,49 @@ export function TripTracker() {
 
   const endRide = () => {
     if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release().catch(() => {});
+      wakeLockRef.current = null;
+    }
+    setWakeLockActive(false);
     setTracking(false);
-    const last = path.current[path.current.length - 1] ?? { lat: 0, lng: 0 };
+
+    let last: { lat: number; lng: number };
+    if (path.current.length > 0) {
+      last = path.current[path.current.length - 1];
+    } else if (lastPos.current) {
+      last = { lat: lastPos.current.latitude, lng: lastPos.current.longitude };
+    } else {
+      last = startCoords.current ?? { lat: 0, lng: 0 };
+    }
+
+    // Safety net: if the screen got locked/backgrounded and watchPosition
+    // barely fired, `distance` will be ~0 even though real ground was
+    // covered. Fall back to a straight-line estimate between the actual
+    // start and end GPS fixes so a ride never reports 0.0 km outright.
+    let finalDistance = distance;
+    let usedFallback = false;
+    if (distance < 0.05 && startCoords.current && elapsed > 30) {
+      const straightLine = haversineKm(
+        { latitude: startCoords.current.lat, longitude: startCoords.current.lng } as GeolocationCoordinates,
+        last
+      );
+      if (straightLine > distance) {
+        finalDistance = straightLine;
+        usedFallback = true;
+      }
+    }
+
+    if (usedFallback) {
+      toast.warning(
+        "GPS tracking paused while your screen was locked — distance is a straight-line estimate between start and end, not your actual route."
+      );
+    }
+
     endMutation.mutate({
       lat: last.lat,
       lng: last.lng,
-      distance: Number(distance.toFixed(2)),
+      distance: Number(finalDistance.toFixed(2)),
       duration: elapsed,
       routePolyline: JSON.stringify(path.current),
     });
@@ -178,6 +256,20 @@ export function TripTracker() {
             </CardValue>
           </div>
         </div>
+        {tracking && (
+          <p className="mb-3 flex items-center justify-center gap-1.5 text-xs text-text-muted">
+            {wakeLockActive ? (
+              <>
+                <Sun size={12} className="text-success" /> Screen will stay awake for this ride
+              </>
+            ) : (
+              <>
+                <SunMedium size={12} className="text-amber-400" /> Keep BlackPearl open and your screen
+                unlocked — GPS pauses in the background on most phones
+              </>
+            )}
+          </p>
+        )}
         {!tracking ? (
           <Button variant="pearl" size="lg" onClick={startRide} disabled={startMutation.isPending}>
             {startMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />}

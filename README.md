@@ -33,6 +33,23 @@ Open http://localhost:3000. Use **Continue as Guest** on the login page to skip 
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Cloud Console → APIs & Services → Credentials → OAuth Client (Web), redirect URI `http://localhost:3000/api/auth/callback/google` |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Reserved for Phase 2 (live map/polylines) — not required to run Phase 1 |
 
+## Auth options
+
+- **Google** and **Guest** (unchanged)
+- **Email + password**: `/signup` to create an account, `/login` to sign in, `/forgot-password` → emailed reset link → `/reset-password`. Passwords are hashed with bcrypt; reset tokens are single-use, expire in 1 hour, and only their SHA-256 hash is stored (never the raw token).
+- **Sessions last 30 days** by design (`session.maxAge` in `src/auth.config.ts`), refreshed on activity. If you were getting logged out constantly before, that was a middleware bug (now fixed) — the gatekeeper and the real session were disagreeing with each other.
+
+### Setting up password-reset emails
+
+`src/lib/services/mailer.ts` sends via [EmailJS](https://www.emailjs.com/) (their REST API, no SMTP server needed):
+
+1. In the EmailJS dashboard: add an **Email Service** (Gmail, Outlook, custom SMTP, etc.) → note its Service ID.
+2. Create an **Email Template** with these variables: `{{to_email}}`, `{{user_name}}`, `{{reset_link}}`.
+3. Under **Account → API Keys**, grab your Public Key and Private Key.
+4. Set `EMAILJS_SERVICE_ID`, `EMAILJS_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY`, `EMAILJS_PRIVATE_KEY`, and `APP_URL` in `.env.local`.
+
+If you actually meant the `emailjs` npm SMTP package instead of the emailjs.com service, swap the body of `sendPasswordResetEmail()` in that file for a nodemailer/emailjs SMTP call — nothing else needs to change (token generation, routes, and pages are all mailer-agnostic).
+
 ## How mileage is calculated
 
 ```
@@ -104,6 +121,15 @@ These are real features from the original spec that still need their own pass �
 - `next/font/google` was swapped for a plain CSS font stack because this build sandbox has no network access to `fonts.googleapis.com`. On Vercel (which does have that access), you can restore premium fonts by re-adding `next/font/google` imports in `src/app/layout.tsx`.
 - The bundled ESLint flat config had a version mismatch (`eslint-config-next` vs `eslint` in this box) — fixed import extensions in `eslint.config.mjs`, but re-run `npm run lint` after `npm install` on your machine to confirm it's clean there.
 - `public/icon-192.png` / `icon-512.png` referenced in `manifest.json` are placeholders — swap in real app icons before shipping as an installable PWA.
+
+## PWA install & trip-tracking accuracy
+
+- **Real app icons are now included** (`public/icon-192.png`, `icon-512.png`, `apple-touch-icon.png`) — earlier builds only had a placeholder SVG, which is why "Add to Home Screen" wasn't showing up reliably on some phones.
+- **Trip tracking uses the Wake Lock API** to keep the screen on during an active ride (`src/components/trips/trip-tracker.tsx`), because mobile browsers throttle or fully suspend GPS callbacks once the screen sleeps. This helps a lot, but it's a partial mitigation, not a guarantee:
+  - Wake Lock keeps the screen from *auto-sleeping* — it can't stop you manually pressing the power button.
+  - It's released whenever the tab/app is backgrounded (switching apps, screen off) and is automatically re-requested when you come back to the tab mid-ride.
+  - If you install BlackPearl as a PWA and it still gets backgrounded (e.g. you switch to Maps for navigation), GPS updates will still pause — this is a browser-level restriction, not something fixable from app code. A native app or Capacitor wrapper with OS-level background location is the only fully reliable fix.
+- **Safety net**: if the screen was locked/backgrounded for most of a ride and barely any GPS points came in, the tracked distance would show as ~0.0 km. Now, if that happens, the app falls back to a straight-line distance between your actual start and end GPS points and tells you via a toast that it's an estimate, not your real route — so a ride should never again show 0.0 km with several minutes on the clock.
 
 ## Deployment (Vercel)
 
