@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Fuel, Gauge, Route, Wrench, MapPin, BarChart3 } from "lucide-react";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
 
 const FEATURES = [
   { icon: Fuel, title: "Automatic Mileage", desc: "Every fill-up calculates km/l instantly from your odometer readings." },
@@ -17,9 +18,12 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-6 sm:px-6">
         <span className="pearl-text font-display text-lg font-semibold">BlackPearl</span>
-        <Link href="/login">
-          <Button variant="glass" size="sm">Sign in</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <InstallAppButton variant="glass" />
+          <Link href="/login">
+            <Button variant="glass" size="sm">Sign in</Button>
+          </Link>
+        </div>
       </header>
 
       <main className="flex-1">

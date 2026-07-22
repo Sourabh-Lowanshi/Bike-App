@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, Fuel, Route, Wrench, LogOut, Bike as BikeIcon, ShieldCheck, LayoutGrid, Wallet } from "lucide-react";
 import { useBikes } from "@/hooks/use-bikes";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -73,7 +74,8 @@ export function Navbar() {
           )}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2">
+          <InstallAppButton variant="glass" />
           {session?.user?.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={session.user.image} alt={session.user.name ?? "User"} className="h-8 w-8 rounded-full" />

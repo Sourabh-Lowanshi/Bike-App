@@ -131,6 +131,11 @@ These are real features from the original spec that still need their own pass �
   - If you install BlackPearl as a PWA and it still gets backgrounded (e.g. you switch to Maps for navigation), GPS updates will still pause — this is a browser-level restriction, not something fixable from app code. A native app or Capacitor wrapper with OS-level background location is the only fully reliable fix.
 - **Safety net**: if the screen was locked/backgrounded for most of a ride and barely any GPS points came in, the tracked distance would show as ~0.0 km. Now, if that happens, the app falls back to a straight-line distance between your actual start and end GPS points and tells you via a toast that it's an estimate, not your real route — so a ride should never again show 0.0 km with several minutes on the clock.
 
+## Sitemap & PWA install button
+
+- `src/app/sitemap.ts` and `src/app/robots.ts` generate `/sitemap.xml` and `/robots.txt` automatically (Next.js metadata file conventions) — only public pages (landing, login, signup, forgot-password) are listed/allowed; every authenticated route is disallowed since it just redirects to `/login` for crawlers anyway. Set `APP_URL` in production to your real domain so the URLs in these files aren't `localhost`.
+- **"Install App" button** (`src/components/pwa/install-app-button.tsx`, on the landing page and in the navbar): on Chrome/Edge/Android it captures the browser's native `beforeinstallprompt` event and triggers the real one-tap install dialog — the "download APK" feel you asked for. iOS Safari has no equivalent API (Apple doesn't allow programmatic install), so there it opens a 3-step visual guide instead (Share → Add to Home Screen → Add). The button hides itself automatically once the app is already installed, or on browsers with no install path at all.
+
 ## Deployment (Vercel)
 
 1. Push to GitHub, import into Vercel.
